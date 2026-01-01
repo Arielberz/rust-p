@@ -1,0 +1,9 @@
+# SQLite
+*.db
+*.db-journal
+
+# Rust
+target/
+
+# macOS
+.DS_Store
