@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Library Project – הסבר מפורט על כל הקוד (Rust)</title>
+  <style>
+:root{
+  --bg:#0b1020; --card:#111a33; --text:#e9ecf6; --muted:#a9b1d6;
+  --accent:#7aa2f7; --accent2:#bb9af7; --border:#223057; --code:#0a0f1e;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg); color:var(--text); line-height:1.6}
+.container{max-width:1100px;margin:0 auto;padding:28px}
+header{background:linear-gradient(135deg,rgba(122,162,247,.22),rgba(187,154,247,.18)); border:1px solid var(--border); padding:22px; border-radius:18px}
+h1{margin:0 0 6px 0;font-size:28px}
+.subtitle{color:var(--muted); margin:0}
+.grid{display:grid; grid-template-columns: 320px 1fr; gap:18px; margin-top:18px}
+nav{position:sticky; top:18px; align-self:start; background:var(--card); border:1px solid var(--border); border-radius:18px; padding:14px}
+nav h2{font-size:14px; margin:0 0 10px 0; color:var(--muted); letter-spacing:.04em; text-transform:uppercase}
+nav a{display:block; padding:8px 10px; color:var(--text); text-decoration:none; border-radius:12px}
+nav a:hover{background:rgba(122,162,247,.12)}
+main{display:flex; flex-direction:column; gap:18px}
+.section{background:var(--card); border:1px solid var(--border); border-radius:18px; padding:18px}
+.section h2{margin:0 0 6px 0; font-size:20px}
+.section p{margin:10px 0; color:var(--text)}
+.badge{display:inline-block; padding:2px 10px; border-radius:999px; background:rgba(122,162,247,.14); border:1px solid rgba(122,162,247,.35); color:var(--text); font-size:12px; margin-right:8px}
+.kv{display:grid; grid-template-columns: 170px 1fr; gap:8px; padding:10px; border:1px dashed var(--border); border-radius:14px; margin:10px 0}
+.kv div:nth-child(odd){color:var(--muted)}
+code, pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+pre{background:var(--code); border:1px solid var(--border); padding:14px; border-radius:14px; overflow:auto; margin:12px 0}
+.small{color:var(--muted); font-size:13px}
+hr{border:0; border-top:1px solid var(--border); margin:14px 0}
+.callout{background:rgba(187,154,247,.10); border:1px solid rgba(187,154,247,.30); border-radius:14px; padding:12px}
+ul{margin:8px 0 8px 22px}
+li{margin:6px 0}
+table{width:100%; border-collapse:separate; border-spacing:0; overflow:hidden; border-radius:14px; border:1px solid var(--border); margin:10px 0}
+th,td{padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top}
+th{background:rgba(122,162,247,.10); text-align:right}
+tr:last-child td{border-bottom:0}
+@media (max-width: 920px){
+  .grid{grid-template-columns:1fr}
+  nav{position:relative; top:auto}
+}
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Library Project – הסבר מפורט על כל הקוד (Rust)</h1>
+      <p class="subtitle">תאריך יצירה: 2026-01-01 • כולל הסבר מפורט על כל קובץ, כל struct, וכל פונקציה (מה עושה ואיך עושה).</p>
+      <p class="subtitle small">אילוצים שנשמרו: בלי HashMap • חיפוש עם <code>for i in 0..vec.len()</code> • הימנעות מ-borrow כפול.</p>
+    </header>
+
+    <div class="grid">
+      <nav>
+        <h2>תוכן עניינים</h2>
+        <a href="#main.rs">main.rs – הדגמת הזרימה</a><a href="#member.rs">member.rs – ניהול חבר</a><a href="#book.rs">book.rs – ניהול ספר/עותקים</a><a href="#loan.rs">loan.rs – הלוואה</a><a href="#library.rs">library.rs – ספרייה: חיפוש/השאלה/החזרה</a><a href="#flow">זרימת עבודה מלאה (מה קורה בכל פעולה)</a><a href="#borrow_rules">חוקי Borrowing בקוד ואיך נמנעים מ-borrow כפול</a>
+        <hr/>
+        <div class="small">טיפ: אפשר לחפש בדף (Ctrl+F) לפי שם פונקציה כמו <code>borrow_book</code>.</div>
+      </nav>
+
+      <main>
+        
+<div class="section" id="main.rs">
+  <h2><span class="badge">קובץ</span>main.rs – הדגמת הזרימה</h2>
+  <p>הקובץ מדגים את כל הזרימה שביקשת: יצירת חברים וספרים, יצירת ספרייה, הדפסה אחרי כל פעולה, השאלה תקינה/לא תקינה, החזרה, ביטול חבר וניסיון השאלה נוסף.</p>
+
+  <h3>מה main עושה בפועל (בכותרות)</h3>
+  <ol>
+    <li>יוצר 2 חברים (IDs שונים).</li>
+    <li>יוצר 2 ספרים: אחד עם עותק 1, אחד עם 2 עותקים.</li>
+    <li>יוצר ספרייה ומוסיף חברים וספרים.</li>
+    <li>מדפיס מצב התחלתי.</li>
+    <li>מבצע השאלה תקינה (חבר פעיל + ספר זמין).</li>
+    <li>מנסה להשאיל שוב אותו ספר כשאין עותק זמין → נכשל.</li>
+    <li>מחזיר ספר → תקין.</li>
+    <li>מכבה חבר (deactivate) ואז מנסה להשאיל → נכשל.</li>
+  </ol>
+
+  <details>
+    <summary class="small">הקוד המלא (main.rs)</summary>
+    <pre>mod member;
+mod book;
+mod loan;
+mod library;
+
+fn main() {
+    let m1_id: u32 = 1;
+    let m2_id: u32 = 2;
+
+    let b1_isbn: u32 = 1111;
+    let b2_isbn: u32 = 2222;
+
+    let m1 = member::member::new(m1_id, &quot;Ariel&quot;.to_string());
+    let m2 = member::member::new(m2_id, &quot;Noam&quot;.to_string());
+
+    let b1 = book::book::new(b1_isbn, &quot;Rust Basics&quot;.to_string(), 1);
+    let b2 = book::book::new(b2_isbn, &quot;Ownership Deep Dive&quot;.to_string(), 2);
+
+    let mut lib = library::library::new(&quot;City Library&quot;.to_string());
+    lib.add_member(m1);
+    lib.add_member(m2);
+    lib.add_book(b1);
+    lib.add_book(b2);
+
+    lib.print();
+
+    let ok1 = lib.borrow_book(m1_id, b1_isbn, 7);
+    println!(&quot;borrow 1 (should be true): {}&quot;, ok1);
+    lib.print();
+
+    let ok2 = lib.borrow_book(m1_id, b1_isbn, 7);
+    println!(&quot;borrow 2 same book (should be false): {}&quot;, ok2);
+    lib.print();
+
+    let ok3 = lib.return_book(m1_id, b1_isbn);
+    println!(&quot;return (should be true): {}&quot;, ok3);
+    lib.print();
+
+    let ok4 = lib.deactivate_member(m1_id);
+    println!(&quot;deactivate member {} (should be true): {}&quot;, m1_id, ok4);
+    lib.print();
+
+    let ok5 = lib.borrow_book(m1_id, b2_isbn, 5);
+    println!(&quot;borrow after deactivate (should be false): {}&quot;, ok5);
+    lib.print();
+}
+</pre>
+  </details>
+</div>
+
+        
+<div class="section" id="member.rs">
+  <h2><span class="badge">קובץ</span>member.rs – מודול חברים</h2>
+  <p>הקובץ מגדיר טיפוס <code>member</code> שמייצג משתמש/חבר בספרייה: מזהה, שם, והאם הוא פעיל. כל הפעולות שקשורות לחבר נמצאות ב-<code>impl member</code>.</p>
+
+  <div class="kv">
+    <div>Struct</div><div><code>member</code></div>
+    <div>שדות</div><div><code>id: u32</code>, <code>name: String</code>, <code>is_active: bool</code></div>
+    <div>מטרה</div><div>לשמור פרטי חבר ולהחליט אם מותר לו לבצע השאלה (רק אם <code>is_active == true</code>).</div>
+  </div>
+
+  <h3>הפונקציות</h3>
+  <table>
+    <tr><th>פונקציה</th><th>מה היא עושה</th><th>איך היא עושה</th></tr>
+    <tr>
+      <td><code>pub fn new(id, name) -&gt; Self</code></td>
+      <td>יוצרת חבר חדש (ברירת מחדל: פעיל).</td>
+      <td>מחזירה <code>Self { id, name, is_active: true }</code>. אין כאן לוגיקה מורכבת – רק אתחול של השדות.</td>
+    </tr>
+    <tr>
+      <td><code>pub fn deactivate(&mut self)</code></td>
+      <td>מבטלת פעילות של החבר.</td>
+      <td>משנה את השדה <code>is_active</code> ל-<code>false</code>. צריך <code>&mut self</code> כי זו פעולה שמשנה מצב.</td>
+    </tr>
+    <tr>
+      <td><code>pub fn print(&self)</code></td>
+      <td>מדפיסה את מצב החבר למסך.</td>
+      <td>משתמשת ב-<code>println!</code> ומדפיסה את השדות. משתמשים ב-<code>&self</code> כי זו קריאה בלבד.</td>
+    </tr>
+  </table>
+
+  <details>
+    <summary class="small">הקוד המלא (member.rs)</summary>
+    <pre>pub struct member {
+    pub id: u32,
+    pub name: String,
+    pub is_active: bool,
+}
+
+impl member {
+    pub fn new(id: u32, name: String) -&gt; Self {
+        Self {
+            id,
+            name,
+            is_active: true,
+        }
+    }
+
+    pub fn deactivate(&amp;mut self) {
+        self.is_active = false;
+    }
+
+    pub fn print(&amp;self) {
+        println!(
+            &quot;member {{ id: {}, name: {}, is_active: {} }}&quot;,
+            self.id, self.name, self.is_active
+        );
+    }
+}
+</pre>
+  </details>
+</div>
+
+        
+<div class="section" id="book.rs">
+  <h2><span class="badge">קובץ</span>book.rs – מודול ספרים ועותקים</h2>
+  <p>הקובץ מגדיר טיפוס <code>book</code> שמייצג ספר עם מספר עותקים. יש הבדל חשוב בין <code>copies_total</code> (כמה עותקים קיימים) לבין <code>copies_available</code> (כמה עותקים כרגע זמינים להשאלה).</p>
+
+  <div class="kv">
+    <div>Struct</div><div><code>book</code></div>
+    <div>שדות</div><div><code>isbn: u32</code>, <code>title: String</code>, <code>copies_total: u32</code>, <code>copies_available: u32</code></div>
+    <div>מטרה</div><div>לנהל זמינות עותקים: השאלה מורידה זמינות, החזרה מעלה (עד המקסימום).</div>
+  </div>
+
+  <div class="callout">
+    <b>למה <code>#[derive(Clone)]</code>?</b>
+    <div class="small">זה מאפשר לעשות <code>book.clone()</code> כדי ליצור "snapshot" (צילום מצב) ללוג/היסטוריה בלי להעביר בעלות. בקוד הנוכחי לא חייבים להשתמש בזה, אבל זה שימושי למטלות של תיעוד/העתקה.</div>
+  </div>
+
+  <h3>הפונקציות</h3>
+  <table>
+    <tr><th>פונקציה</th><th>מה היא עושה</th><th>איך היא עושה</th></tr>
+    <tr>
+      <td><code>pub fn new(isbn, title, copies_total) -&gt; Self</code></td>
+      <td>יוצרת ספר חדש.</td>
+      <td>מגדירה <code>copies_available = copies_total</code> כדי שבהתחלה כל העותקים זמינים.</td>
+    </tr>
+    <tr>
+      <td><code>pub fn borrow_copy(&mut self) -&gt; bool</code></td>
+      <td>מנסה להשאיל עותק אחד.</td>
+      <td>אם <code>copies_available == 0</code> מחזירה <code>false</code>. אחרת מורידה 1 ומחזירה <code>true</code>.</td>
+    </tr>
+    <tr>
+      <td><code>pub fn return_copy(&mut self)</code></td>
+      <td>מחזירה עותק לספר.</td>
+      <td>אם <code>copies_available &lt; copies_total</code> – מוסיפה 1. אם כבר כולם זמינים, לא משנה כלום (מונע חריגה מעל המקסימום).</td>
+    </tr>
+    <tr>
+      <td><code>pub fn print(&self)</code></td>
+      <td>מדפיסה מצב ספר.</td>
+      <td>מדפיסה ISBN, כותרת, ומספר עותקים כולל/זמין.</td>
+    </tr>
+  </table>
+
+  <details>
+    <summary class="small">הקוד המלא (book.rs)</summary>
+    <pre>#[derive(Clone)]
+pub struct book {
+    pub isbn: u32,
+    pub title: String,
+    pub copies_total: u32,
+    pub copies_available: u32,
+}
+
+impl book {
+    pub fn new(isbn: u32, title: String, copies_total: u32) -&gt; Self {
+        Self {
+            isbn,
+            title,
+            copies_total,
+            copies_available: copies_total,
+        }
+    }
+
+    pub fn borrow_copy(&amp;mut self) -&gt; bool {
+        if self.copies_available == 0 {
+            false
+        } else {
+            self.copies_available -= 1;
+            true
+        }
+    }
+
+    pub fn return_copy(&amp;mut self) {
+        if self.copies_available &lt; self.copies_total {
+            self.copies_available += 1;
+        }
+    }
+
+    pub fn print(&amp;self) {
+        println!(
+            &quot;book {{ isbn: {}, title: {}, copies_total: {}, copies_available: {} }}&quot;,
+            self.isbn, self.title, self.copies_total, self.copies_available
+        );
+    }
+}
+</pre>
+  </details>
+</div>
+
+        
+<div class="section" id="loan.rs">
+  <h2><span class="badge">קובץ</span>loan.rs – מודול הלוואות</h2>
+  <p>הקובץ מגדיר טיפוס <code>loan</code> שמייצג פעולה של השאלת ספר: מי השאיל (<code>numberId</code>), איזה ספר (<code>isbn</code>), לכמה ימים, והאם ההשאלה אושרה.</p>
+
+  <div class="kv">
+    <div>Struct</div><div><code>loan</code></div>
+    <div>שדות</div><div><code>numberId: u32</code>, <code>isbn: u32</code>, <code>days: u32</code>, <code>approved: bool</code></div>
+    <div>מטרה</div><div>לשמור רשומה של השאלה בספרייה (נשמר בתוך <code>library.loans</code>).</div>
+  </div>
+
+  <h3>הפונקציות</h3>
+  <table>
+    <tr><th>פונקציה</th><th>מה היא עושה</th><th>איך היא עושה</th></tr>
+    <tr>
+      <td><code>pub fn new(numberId, isbn, days) -&gt; Self</code></td>
+      <td>יוצרת הלוואה חדשה.</td>
+      <td>מאתחלת <code>approved=false</code> ואז אפשר לאשר בהמשך עם <code>approve()</code>.</td>
+    </tr>
+    <tr>
+      <td><code>pub fn approve(&mut self)</code></td>
+      <td>מאשרת את ההלוואה.</td>
+      <td>מחליפה את <code>approved</code> ל-<code>true</code>.</td>
+    </tr>
+    <tr>
+      <td><code>pub fn print(&self)</code></td>
+      <td>מדפיסה את מצב ההלוואה.</td>
+      <td>מדפיסה מי/איזה ספר/ימים/approved.</td>
+    </tr>
+  </table>
+
+  <details>
+    <summary class="small">הקוד המלא (loan.rs)</summary>
+    <pre>pub struct loan {
+    pub numberId: u32,
+    pub isbn: u32,
+    pub days: u32,
+    pub approved: bool,
+}
+
+impl loan {
+    pub fn new(numberId: u32, isbn: u32, days: u32) -&gt; Self {
+        Self {
+            numberId,
+            isbn,
+            days,
+            approved: false,
+        }
+    }
+
+    pub fn approve(&amp;mut self) {
+        self.approved = true;
+    }
+
+    pub fn print(&amp;self) {
+        println!(
+            &quot;loan {{ numberId: {}, isbn: {}, days: {}, approved: {} }}&quot;,
+            self.numberId, self.isbn, self.days, self.approved
+        );
+    }
+}
+</pre>
+  </details>
+</div>
+
+        
+<div class="section" id="library.rs">
+  <h2><span class="badge">קובץ</span>library.rs – מודול ספרייה (הלוגיקה המרכזית)</h2>
+  <p>זה הלב של הפרויקט: הספרייה מחזיקה שלושה <code>Vec</code>‑ים – חברים, ספרים, והלוואות. אין שימוש ב‑HashMap, וכל חיפוש נעשה עם <code>for i in 0..vec.len()</code> בהתאם לאילוץ שלך.</p>
+
+  <div class="kv">
+    <div>Struct</div><div><code>library</code></div>
+    <div>שדות</div>
+    <div>
+      <code>name: String</code><br>
+      <code>members: Vec&lt;member&gt;</code><br>
+      <code>books: Vec&lt;book&gt;</code><br>
+      <code>loans: Vec&lt;loan&gt;</code>
+    </div>
+    <div>מטרה</div><div>לנהל את כל הפעולות: הוספה, חיפוש, השאלה, החזרה, הדפסה.</div>
+  </div>
+
+  <h3>חיפוש בלי HashMap</h3>
+  <p>שתי פונקציות חיפוש מחזירות אינדקס או <code>-1</code> אם לא נמצא:</p>
+  <ul>
+    <li><code>find_member_index(member_id)</code> – מחפש לפי <code>members[i].id</code></li>
+    <li><code>find_book_index(isbn)</code> – מחפש לפי <code>books[i].isbn</code></li>
+  </ul>
+  <p class="small">החיפוש הוא <b>O(n)</b> (כי עוברים על כל הווקטור עד שמוצאים).</p>
+
+  <h3>פעולות עיקריות</h3>
+  <table>
+    <tr><th>פונקציה</th><th>מה היא עושה</th><th>איך היא עושה (שלבים)</th></tr>
+
+    <tr>
+      <td><code>new(name) -&gt; Self</code></td>
+      <td>יוצרת ספרייה ריקה.</td>
+      <td>מאתחלת <code>members/books/loans</code> ל־<code>Vec::new()</code>.</td>
+    </tr>
+
+    <tr>
+      <td><code>add_member(m)</code></td>
+      <td>מוסיפה חבר.</td>
+      <td><code>self.members.push(m)</code></td>
+    </tr>
+
+    <tr>
+      <td><code>add_book(b)</code></td>
+      <td>מוסיפה ספר.</td>
+      <td><code>self.books.push(b)</code></td>
+    </tr>
+
+    <tr>
+      <td><code>add_loan(l)</code></td>
+      <td>מוסיפה הלוואה לרשימת הלוואות.</td>
+      <td><code>self.loans.push(l)</code></td>
+    </tr>
+
+    <tr>
+      <td><code>deactivate_member(member_id) -&gt; bool</code></td>
+      <td>מבטלת חבר (לא פעיל).</td>
+      <td>
+        1) מחפשת אינדקס חבר.<br>
+        2) אם לא נמצא → <code>false</code>.<br>
+        3) אחרת קוראת <code>self.members[i].deactivate()</code> ומחזירה <code>true</code>.
+      </td>
+    </tr>
+
+    <tr>
+      <td><code>borrow_book(member_id, isbn, days) -&gt; bool</code></td>
+      <td>השאלת ספר – יוצרת loan רק אם התנאים מתקיימים.</td>
+      <td>
+        1) מוצאת אינדקס חבר וספר.<br>
+        2) אם אחד מהם לא נמצא → <code>false</code>.<br>
+        3) בודקת שהחבר פעיל: <code>is_active</code>.<br>
+        4) מנסה לקחת עותק: <code>borrow_copy()</code> על הספר (עם <code>&mut</code>).<br>
+        5) אם אין עותק זמין → <code>false</code>.<br>
+        6) יוצרת <code>loan::new</code>, עושה <code>approve()</code>, ומוסיפה ל־<code>loans</code> → <code>true</code>.
+      </td>
+    </tr>
+
+    <tr>
+      <td><code>return_book(member_id, isbn) -&gt; bool</code></td>
+      <td>החזרת ספר – מחזירה עותק ומסירה loan.</td>
+      <td>
+        1) מחפשת את ההלוואה המתאימה ב־<code>loans</code> עם לולאה.<br>
+        2) אם לא נמצאה → <code>false</code>.<br>
+        3) מחפשת את הספר לפי isbn.<br>
+        4) מחזירה עותק: <code>return_copy()</code>.<br>
+        5) מסירה את ההלוואה: <code>self.loans.remove(index)</code> → <code>true</code>.
+      </td>
+    </tr>
+
+    <tr>
+      <td><code>print()</code></td>
+      <td>מדפיסה את כל מצב הספרייה.</td>
+      <td>מדפיסה כותרת, ואז עוברת בלולאות על <code>members/books/loans</code> ומפעילה לכל אחד <code>print()</code>.</td>
+    </tr>
+  </table>
+
+  <details>
+    <summary class="small">הקוד המלא (library.rs)</summary>
+    <pre>use crate::book::book;
+use crate::loan::loan;
+use crate::member::member;
+
+pub struct library {
+    pub name: String,
+    pub members: Vec&lt;member&gt;,
+    pub books: Vec&lt;book&gt;,
+    pub loans: Vec&lt;loan&gt;,
+}
+
+impl library {
+    pub fn new(name: String) -&gt; Self {
+        Self {
+            name,
+            members: Vec::new(),
+            books: Vec::new(),
+            loans: Vec::new(),
+        }
+    }
+
+    pub fn add_member(&amp;mut self, m: member) {
+        self.members.push(m);
+    }
+
+    pub fn add_book(&amp;mut self, b: book) {
+        self.books.push(b);
+    }
+
+    pub fn add_loan(&amp;mut self, l: loan) {
+        self.loans.push(l);
+    }
+
+    pub fn find_member_index(&amp;self, member_id: u32) -&gt; i32 {
+        for i in 0..self.members.len() {
+            if self.members[i].id == member_id {
+                return i as i32;
+            }
+        }
+        -1
+    }
+
+    pub fn find_book_index(&amp;self, isbn: u32) -&gt; i32 {
+        for i in 0..self.books.len() {
+            if self.books[i].isbn == isbn {
+                return i as i32;
+            }
+        }
+        -1
+    }
+
+    pub fn deactivate_member(&amp;mut self, member_id: u32) -&gt; bool {
+        let mi = self.find_member_index(member_id);
+        if mi == -1 {
+            return false;
+        }
+        self.members[mi as usize].deactivate();
+        true
+    }
+
+    pub fn borrow_book(&amp;mut self, member_id: u32, isbn: u32, days: u32) -&gt; bool {
+        let member_index = self.find_member_index(member_id);
+        let book_index = self.find_book_index(isbn);
+
+        if member_index == -1 || book_index == -1 {
+            return false;
+        }
+
+        let mi = member_index as usize;
+        let bi = book_index as usize;
+
+        if !self.members[mi].is_active {
+            return false;
+        }
+
+        let copy_ok = {
+            let b = &amp;mut self.books[bi];
+            b.borrow_copy()
+        };
+
+        if !copy_ok {
+            return false;
+        }
+
+        let mut l = loan::new(member_id, isbn, days);
+        l.approve();
+        self.add_loan(l);
+
+        true
+    }
+
+    pub fn return_book(&amp;mut self, member_id: u32, isbn: u32) -&gt; bool {
+        let mut loan_index: i32 = -1;
+        for i in 0..self.loans.len() {
+            if self.loans[i].numberId == member_id &amp;&amp; self.loans[i].isbn == isbn {
+                loan_index = i as i32;
+                break;
+            }
+        }
+        if loan_index == -1 {
+            return false;
+        }
+
+        let book_index = self.find_book_index(isbn);
+        if book_index == -1 {
+            return false;
+        }
+        let bi = book_index as usize;
+
+        {
+            let b = &amp;mut self.books[bi];
+            b.return_copy();
+        }
+
+        self.loans.remove(loan_index as usize);
+        true
+    }
+
+    pub fn print(&amp;self) {
+        println!(&quot;\n=== library: {} ===&quot;, self.name);
+
+        println!(&quot;-- members --&quot;);
+        for i in 0..self.members.len() {
+            self.members[i].print();
+        }
+
+        println!(&quot;-- books --&quot;);
+        for i in 0..self.books.len() {
+            self.books[i].print();
+        }
+
+        println!(&quot;-- loans --&quot;);
+        for i in 0..self.loans.len() {
+            self.loans[i].print();
+        }
+
+        println!(&quot;====================\n&quot;);
+    }
+}
+</pre>
+  </details>
+</div>
+
+        
+<div class="section" id="flow">
+  <h2><span class="badge">הסבר</span>זרימת עבודה מלאה – מה משתנה בכל פעולה</h2>
+
+  <h3>1) מצב התחלתי</h3>
+  <ul>
+    <li><b>members</b>: 2 חברים פעילים (<code>is_active=true</code>).</li>
+    <li><b>books</b>: ספר A עם <code>available=1</code>, ספר B עם <code>available=2</code>.</li>
+    <li><b>loans</b>: ריק.</li>
+  </ul>
+
+  <h3>2) השאלה תקינה (Borrow #1)</h3>
+  <ul>
+    <li>בדיקת חבר: נמצא + פעיל.</li>
+    <li>בדיקת ספר: נמצא.</li>
+    <li><code>borrow_copy()</code> מוריד זמינות ב־1.</li>
+    <li>נוצר <code>loan</code> חדש ונוסף ל־<code>loans</code>.</li>
+  </ul>
+  <div class="callout small">
+    אחרי הפעולה: ספר A יהיה עם <code>available=0</code>, ויהיה loan אחד פעיל.
+  </div>
+
+  <h3>3) ניסיון השאלה לא תקין (Borrow #2 לאותו ספר)</h3>
+  <ul>
+    <li>החבר עדיין קיים ופעיל.</li>
+    <li>הספר קיים, אבל <code>copies_available==0</code>.</li>
+    <li><code>borrow_copy()</code> מחזיר <code>false</code>, ולכן לא נוצר loan.</li>
+  </ul>
+
+  <h3>4) החזרת ספר תקינה</h3>
+  <ul>
+    <li>מחפשים loan שמתאים ל־(member_id, isbn).</li>
+    <li>אם נמצא: קוראים <code>return_copy()</code> לספר → מעלה זמינות ב־1.</li>
+    <li>מסירים את ה־loan מהרשימה.</li>
+  </ul>
+
+  <h3>5) deactivate לחבר ואז ניסיון השאלה</h3>
+  <ul>
+    <li><code>deactivate_member</code> מסמן <code>is_active=false</code>.</li>
+    <li>ב־<code>borrow_book</code> יש בדיקה: אם החבר לא פעיל → <code>false</code> מיד.</li>
+    <li>גם אם הספר זמין – לא תיווצר הלוואה.</li>
+  </ul>
+</div>
+
+        
+<div class="section" id="borrow_rules">
+  <h2><span class="badge">Rust</span>Borrowing – איך הקוד נמנע מ־borrow כפול</h2>
+
+  <p>האילוץ שלך היה: “להיזהר מ־borrow כפול: אל תנסה להחזיק <code>&mut</code> לשני דברים בו־זמנית”.</p>
+
+  <h3>הבעיה הנפוצה</h3>
+  <pre>let book = &mut self.books[bi];
+self.add_loan(loan); // ❌ יכול להיכשל כי עדיין מחזיקים &mut ל-books</pre>
+
+  <h3>הפתרון בקוד</h3>
+  <p>בקוד של <code>borrow_book</code> משתמשים בבלוק קצר:</p>
+  <pre>let copy_ok = {
+    let b = &mut self.books[bi];
+    b.borrow_copy()
+}; // כאן ה-&amp;mut נסגר
+
+if !copy_ok { return false; }
+
+self.add_loan(l); // ✅ מותר כי אין &amp;mut פתוח על books</pre>
+
+  <p class="small">העיקרון: עושים שינוי נקודתי על אוסף אחד, סוגרים את ה־borrow (יציאה מהבלוק), ואז ממשיכים לשנות אוסף אחר.</p>
+
+  <h3>גם ב-return_book</h3>
+  <p>אותו רעיון: קודם עושים <code>&mut</code> לספר ומחזירים עותק, ורק אחר כך עושים <code>remove</code> על ה־loans.</p>
+</div>
+
+      </main>
+    </div>
+  </div>
+</body>
+</html>
