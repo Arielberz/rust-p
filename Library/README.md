@@ -13,7 +13,11 @@
 - ניהול השאלה והחזרת ספרים
 
 ---
+[לחץ כאן לקריאת התיעוד המלא](docs/Library_Code_Explanation.html)
+
 
 ## ▶️ הרצה
 ```bash
 cargo run
+
+
