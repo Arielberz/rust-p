@@ -13,11 +13,15 @@
 - ניהול השאלה והחזרת ספרים
 
 ---
+
+## 📖 תיעוד מלא
+קובץ HTML עם הסבר מפורט על כל הקוד, כל פונקציה וזרימת העבודה:
+
 [לחץ כאן לקריאת התיעוד המלא](docs/Library_Code_Explanation.html)
 
+
+---
 
 ## ▶️ הרצה
 ```bash
 cargo run
-
-
