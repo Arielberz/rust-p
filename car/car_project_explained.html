@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>הסבר מלא ומפורט על הפרויקט (Rust + Actix-web + SQLite)</title>
+  <style>
+    :root {
+      --bg:#0b1020;
+      --panel:#121a33;
+      --panel2:#0f1730;
+      --text:#e9ecf1;
+      --muted:#b9c1d6;
+      --accent:#7aa2ff;
+      --accent2:#5eead4;
+      --warn:#fbbf24;
+      --bad:#fb7185;
+      --ok:#34d399;
+      --border: rgba(255,255,255,.12);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    }
+    body {
+      margin:0;
+      font-family: var(--sans);
+      background: radial-gradient(1200px 800px at 80% -10%, rgba(122,162,255,.25), transparent 60%),
+                  radial-gradient(1000px 700px at 10% 0%, rgba(94,234,212,.18), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+      line-height:1.65;
+    }
+    a { color: var(--accent2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    header {
+      padding: 28px 18px 10px;
+      border-bottom:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(18,26,51,.88), rgba(18,26,51,.35));
+      position: sticky;
+      top: 0;
+      backdrop-filter: blur(10px);
+      z-index: 9;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 0 18px; }
+    h1 {
+      font-size: 28px;
+      margin: 0 0 8px 0;
+      letter-spacing: .2px;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 14px;
+    }
+    .grid {
+      display:grid;
+      grid-template-columns: 320px 1fr;
+      gap: 16px;
+      align-items: start;
+      padding: 18px 0 26px;
+    }
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+      header { position: relative; }
+    }
+    nav {
+      background: rgba(18,26,51,.72);
+      border:1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      position: sticky;
+      top: 110px;
+    }
+    @media (max-width: 980px) {
+      nav { position: relative; top: 0; }
+    }
+    nav .title {
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    nav a {
+      display:block;
+      padding: 8px 10px;
+      border-radius: 12px;
+      color: var(--muted);
+    }
+    nav a:hover {
+      background: rgba(122,162,255,.12);
+      color: var(--text);
+      text-decoration: none;
+    }
+    .card {
+      background: rgba(18,26,51,.72);
+      border:1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: 0 12px 30px rgba(0,0,0,.22);
+    }
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 20px;
+    }
+    .card h3 {
+      margin: 18px 0 8px;
+      font-size: 16px;
+      color: var(--accent2);
+    }
+    .pill {
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      font-size: 12px;
+      padding: 6px 10px;
+      border:1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(15,23,48,.6);
+      margin: 4px 6px 0 0;
+    }
+    .kpi {
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+    @media (max-width: 980px) {
+      .kpi { grid-template-columns: 1fr; }
+    }
+    .kpi .box {
+      background: rgba(15,23,48,.6);
+      border:1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px;
+    }
+    .kpi .box .k {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .kpi .box .v {
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .code {
+      background: rgba(7,10,18,.75);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 16px;
+      padding: 14px;
+      overflow:auto;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.55;
+      direction:ltr;
+      text-align:left;
+      position: relative;
+    }
+    .code::before {
+      content: attr(data-lang);
+      position:absolute;
+      top: 10px;
+      left: 12px;
+      font-family: var(--sans);
+      font-size: 11px;
+      color: rgba(233,236,241,.75);
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(122,162,255,.12);
+      border:1px solid rgba(122,162,255,.20);
+    }
+    .code code {
+      display:block;
+      padding-top: 24px;
+      white-space: pre;
+    }
+    .hint {
+      border-right: 4px solid rgba(94,234,212,.8);
+      background: rgba(94,234,212,.10);
+      padding: 10px 12px;
+      border-radius: 12px;
+      color: var(--text);
+    }
+    .warn {
+      border-right: 4px solid rgba(251,191,36,.9);
+      background: rgba(251,191,36,.10);
+      padding: 10px 12px;
+      border-radius: 12px;
+      color: var(--text);
+    }
+    .bad {
+      border-right: 4px solid rgba(251,113,133,.9);
+      background: rgba(251,113,133,.10);
+      padding: 10px 12px;
+      border-radius: 12px;
+      color: var(--text);
+    }
+    .table {
+      width:100%;
+      border-collapse: collapse;
+      overflow:hidden;
+      border-radius: 14px;
+      border:1px solid var(--border);
+      background: rgba(15,23,48,.55);
+    }
+    .table th, .table td {
+      padding: 10px 12px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      text-align: right;
+      vertical-align: top;
+    }
+    .table th {
+      font-size: 12px;
+      color: var(--muted);
+      background: rgba(18,26,51,.45);
+    }
+    .table td {
+      font-size: 13px;
+    }
+    .mini {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    details {
+      border:1px solid var(--border);
+      border-radius: 16px;
+      padding: 10px 12px;
+      background: rgba(15,23,48,.55);
+      margin-top: 10px;
+    }
+    summary {
+      cursor: pointer;
+      color: var(--text);
+      font-weight: 700;
+      list-style: none;
+    }
+    summary::-webkit-details-marker { display:none; }
+    .footer {
+      padding: 24px 0 50px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .tag {
+      display:inline-block;
+      padding:2px 8px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      font-family: var(--mono);
+      font-size: 12px;
+      direction:ltr;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>הסבר מלא ומפורט על הפרויקט (Rust + Actix-web + SQLite)</h1>
+    <div class="sub">מסמך הסבר שנוצר בתאריך 01/01/2026 • API קטן ל״רכבים״ עם SQLite.</div>
+    <div>
+      <span class="pill">Rust</span>
+      <span class="pill">Actix-web</span>
+      <span class="pill">SQLx + SQLite</span>
+      <span class="pill">Serde (JSON)</span>
+      <span class="pill">פורט 4001</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap grid">
+  <nav>
+    <div class="title">תוכן עניינים</div>
+    <a href="#overview">1) מה הפרויקט עושה (במילים פשוטות)</a>
+    <a href="#run">2) איך מריצים ומה מצופה לראות</a>
+    <a href="#deps">3) תלותים (Cargo.toml) ומה כל אחד נותן</a>
+    <a href="#db">4) מסד הנתונים: קובץ, טבלה, וסכמה</a>
+    <a href="#routes">5) Routes / Endpoints (API)</a>
+    <a href="#types">6) Structs (Car, CreateCarRequest)</a>
+    <a href="#initdb">7) init_db() – חיבור ויצירת טבלה</a>
+    <a href="#createcar">8) create_car() – POST /cars</a>
+    <a href="#getcars">9) get_cars() – GET /cars</a>
+    <a href="#main">10) main() – הרמת השרת והזרקת ה־pool</a>
+    <a href="#who-calls-who">11) מי קורא למי ולמה (Flow)</a>
+    <a href="#errors">12) שגיאות, קודים, ושיפורים מומלצים</a>
+    <a href="#fullcode">נספח: כל הקוד</a>
+  </nav>
+
+  <main>
+
+    <section id="overview" class="card">
+      <h2>1) מה הפרויקט עושה (במילים פשוטות)</h2>
+      <p>
+        זהו שרת <span class="tag">REST API</span> קטן ב־Rust שמאפשר לעבוד עם טבלת רכבים בשם
+        <span class="tag">car</span> בתוך מסד נתונים <span class="tag">SQLite</span>.
+        השרת מספק 2 פעולות עיקריות:
+      </p>
+      <ul>
+        <li><b>הוספת רכב חדש</b> למסד נתונים באמצעות <span class="tag">POST /cars</span>.</li>
+        <li><b>שליפת כל הרכבים</b> מהמסד באמצעות <span class="tag">GET /cars</span>.</li>
+      </ul>
+
+      <div class="kpi">
+        <div class="box"><div class="k">פלט עיקרי</div><div class="v">JSON Responses</div></div>
+        <div class="box"><div class="k">אחסון נתונים</div><div class="v">SQLite (קובץ)</div></div>
+        <div class="box"><div class="k">כתובת שרת</div><div class="v">http://127.0.0.1:4001</div></div>
+      </div>
+
+      <div class="hint" style="margin-top:12px;">
+        <b>רעיון חשוב:</b> השרת שומר <b>Connection Pool</b> ל־SQLite באמצעות SQLx,
+        ומעביר אותו ל־handlers של ה־routes בעזרת <span class="tag">web::Data&lt;SqlitePool&gt;</span>.
+      </div>
+    </section>
+
+    <section id="run" class="card">
+      <h2>2) איך מריצים ומה מצופה לראות</h2>
+      <h3>הרצה</h3>
+      <p class="mini">בתיקיית הפרויקט:</p>
+      <pre class="code" data-lang="bash"><code>cargo run</code></pre>
+
+      <h3>בדיקה מהירה עם curl</h3>
+      <pre class="code" data-lang="bash"><code># הוספת רכב חדש
+curl -X POST http://127.0.0.1:4001/cars \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{&quot;color&quot;:&quot;black&quot;,&quot;model&quot;:&quot;Corolla&quot;}&#x27;
+
+# שליפה של כל הרכבים
+curl http://127.0.0.1:4001/cars
+</code></pre>
+
+      <div class="warn">
+        <b>שים לב:</b> בקוד כתוב שה־DB נמצא בנתיב <span class="tag">./src/car.db</span>.
+        אם אין לך קובץ שם – הוא ייווצר אוטומטית בגלל <span class="tag">create_if_missing(true)</span>.
+      </div>
+    </section>
+
+    <section id="deps" class="card">
+      <h2>3) תלותים (Cargo.toml) ומה כל אחד נותן</h2>
+      <p>קובץ <span class="tag">Cargo.toml</span> מגדיר את התלויות של הפרויקט.</p>
+      <pre class="code" data-lang="toml"><code>[package]
+name = &quot;car&quot;
+version = &quot;0.1.0&quot;
+edition = &quot;2024&quot;
+
+[dependencies]
+actix-web = &quot;4&quot;
+serde = { version = &quot;1.0.228&quot;, features = [&quot;derive&quot;] }
+sqlx = { version = &quot;0.8.6&quot;, features = [&quot;runtime-tokio-rustls&quot;, &quot;sqlite&quot;] }
+tokio = { version = &quot;1.48.0&quot;, features = [&quot;full&quot;] }
+</code></pre>
+
+      <table class="table" style="margin-top:10px;">
+        <thead><tr><th>תלות</th><th>מה היא עושה בפרויקט</th><th>איפה רואים את זה בקוד</th></tr></thead>
+        <tbody>
+          <tr><td><b>actix-web</b></td><td>Framework ל־HTTP Server: routes, server async, responses, JSON.</td><td>#[get]/#[post], HttpServer, App, HttpResponse</td></tr>
+          <tr><td><b>serde</b></td><td>JSON serialize/deserialize.</td><td>derive(Serialize/Deserialize)</td></tr>
+          <tr><td><b>sqlx</b></td><td>גישה אסינכרונית ל־SQLite + pool.</td><td>SqlitePool, query(), execute(), fetch_all()</td></tr>
+          <tr><td><b>tokio</b></td><td>Runtime אסינכרוני (מאחורי הקלעים).</td><td>#[actix_web::main]</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="db" class="card">
+      <h2>4) מסד הנתונים: קובץ, טבלה, וסכמה</h2>
+      <p>SQLite הוא DB בקובץ. בקוד מוגדר URL: <span class="tag">sqlite://./src/car.db</span>.</p>
+      <h3>הטבלה שנוצרת אם לא קיימת</h3>
+      <pre class="code" data-lang="sql"><code>CREATE TABLE IF NOT EXISTS car (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    color TEXT NOT NULL,
+    model TEXT NOT NULL
+)</code></pre>
+      <ul>
+        <li><b>id</b> – מספר רץ, נוצר אוטומטית (AUTOINCREMENT)</li>
+        <li><b>color</b> – טקסט, חובה (NOT NULL)</li>
+        <li><b>model</b> – טקסט, חובה (NOT NULL)</li>
+      </ul>
+    </section>
+
+    <section id="routes" class="card">
+      <h2>5) Routes / Endpoints (API)</h2>
+      <table class="table">
+        <thead><tr><th>Method</th><th>Path</th><th>מה עושה</th><th>קלט</th><th>פלט</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><span class="tag">POST</span></td><td><span class="tag">/cars</span></td><td>מוסיף רכב חדש.</td><td>JSON: {"color":"...","model":"..."}</td><td>JSON: {"id":...,"color":"...","model":"..."}</td><td>201 / 500</td></tr>
+          <tr><td><span class="tag">GET</span></td><td><span class="tag">/cars</span></td><td>מחזיר את כל הרכבים.</td><td>—</td><td>JSON array</td><td>200 / 500</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="types" class="card">
+      <h2>6) Structs (Car, CreateCarRequest)</h2>
+      <h3>Car – האובייקט שמוחזר ללקוח</h3>
+      <pre class="code" data-lang="rust"><code>#[derive(Serialize)]
+struct Car {
+    id: i64,
+    color: String,
+    model: String,
+}</code></pre>
+
+      <h3>CreateCarRequest – הגוף של בקשת ה־POST</h3>
+      <pre class="code" data-lang="rust"><code>#[derive(Deserialize)]
+struct CreateCarRequest {
+    color: String,
+    model: String,
+}</code></pre>
+    </section>
+
+    <section id="initdb" class="card">
+      <h2>7) init_db() – חיבור ויצירת טבלה</h2>
+      <pre class="code" data-lang="rust"><code>async fn init_db() -&gt; Result&lt;SqlitePool, sqlx::Error&gt; {
+    let database_url = &quot;sqlite://./src/car.db&quot;;
+    let connect_opts = SqliteConnectOptions::from_str(database_url)?.create_if_missing(true);
+
+    let pool = SqlitePoolOptions::new()
+        .max_connections(5)
+        .connect_with(connect_opts)
+        .await?;
+
+    sqlx::query(
+        r#&quot;
+        CREATE TABLE IF NOT EXISTS car (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            color TEXT NOT NULL,
+            model TEXT NOT NULL
+        )
+        &quot;#,
+    )
+    .execute(&amp;pool)
+    .await?;
+
+    Ok(pool)
+}</code></pre>
+
+      <h3>מה נכנס? מה יוצא?</h3>
+      <ul>
+        <li><b>קלט:</b> אין פרמטרים.</li>
+        <li><b>פלט:</b> <span class="tag">Result&lt;SqlitePool, sqlx::Error&gt;</span>.</li>
+      </ul>
+
+      <h3>למה create_if_missing(true)?</h3>
+      <div class="hint">
+        אם הקובץ <span class="tag">src/car.db</span> לא קיים, SQLite לא ייכשל – הוא פשוט ייצור אותו, ואז תיווצר הטבלה.
+      </div>
+    </section>
+
+    <section id="createcar" class="card">
+      <h2>8) create_car() – POST /cars</h2>
+      <pre class="code" data-lang="rust"><code>#[post(&quot;/cars&quot;)]
+async fn create_car(
+    pool: web::Data&lt;SqlitePool&gt;,
+    car: web::Json&lt;CreateCarRequest&gt;
+) -&gt; impl Responder {
+    match sqlx::query(&quot;INSERT INTO car (color, model) VALUES (?, ?)&quot;)
+        .bind(&amp;car.color)
+        .bind(&amp;car.model)
+        .execute(&amp;**pool)
+        .await
+    {
+        Ok(result) =&gt; {
+            let new_car = Car {
+                id: result.last_insert_rowid(),
+                color: car.color.clone(),
+                model: car.model.clone(),
+            };
+            HttpResponse::Created().json(new_car)
+        }
+        Err(e) =&gt; HttpResponse::InternalServerError().body(format!(&quot;Database error: {}&quot;, e)),
+    }
+}</code></pre>
+
+      <h3>שלבים</h3>
+      <ol>
+        <li>Actix ממיר את body ל־<span class="tag">CreateCarRequest</span>.</li>
+        <li>SQLx מריץ INSERT עם <span class="tag">bind</span> (פרמטרים, לא שרשור).</li>
+        <li>אם הצליח: מחזירים 201 עם ה־id החדש.</li>
+        <li>אם נכשל: מחזירים 500.</li>
+      </ol>
+    </section>
+
+    <section id="getcars" class="card">
+      <h2>9) get_cars() – GET /cars</h2>
+      <pre class="code" data-lang="rust"><code>#[get(&quot;/cars&quot;)]
+async fn get_cars(pool: web::Data&lt;SqlitePool&gt;) -&gt; impl Responder {
+    match sqlx::query(&quot;SELECT id, color, model FROM car ORDER BY id&quot;)
+        .fetch_all(&amp;**pool)
+        .await
+    {
+        Ok(rows) =&gt; {
+            let cars: Vec&lt;Car&gt; = rows
+                .iter()
+                .map(|row| Car {
+                    id: row.get(&quot;id&quot;),
+                    color: row.get(&quot;color&quot;),
+                    model: row.get(&quot;model&quot;),
+                })
+                .collect();
+
+            HttpResponse::Ok().json(cars)
+        }
+        Err(e) =&gt; HttpResponse::InternalServerError().body(format!(&quot;Database error: {}&quot;, e)),
+    }
+}</code></pre>
+      <p class="mini">הפונקציה קוראת את כל הרשומות, ממירה אותן ל־Vec&lt;Car&gt;, ומחזירה JSON.</p>
+    </section>
+
+    <section id="main" class="card">
+      <h2>10) main() – הרמת השרת והזרקת ה־pool</h2>
+      <pre class="code" data-lang="rust"><code>#[actix_web::main]
+async fn main() -&gt; std::io::Result&lt;()&gt; {
+    let pool = init_db().await.expect(&quot;Failed to initialize database&quot;);
+
+    HttpServer::new(move || {
+        App::new()
+            .app_data(web::Data::new(pool.clone()))
+            .service(create_car)
+            .service(get_cars)
+    })
+    .bind((&quot;127.0.0.1&quot;, 4001))?
+    .run()
+    .await
+}</code></pre>
+
+      <div class="hint">
+        <b>הנקודה הקריטית:</b> <span class="tag">app_data(web::Data::new(pool.clone()))</span>
+        גורם לזה שכל handler יקבל את ה־pool בלי שתצטרך ליצור חיבור DB מחדש בכל בקשה.
+      </div>
+    </section>
+
+    <section id="who-calls-who" class="card">
+      <h2>11) מי קורא למי ולמה (Flow)</h2>
+      <pre class="code" data-lang="text"><code>Client
+  |
+  |  HTTP request
+  v
+Actix-web Router (App services)
+  |
+  +--&gt; POST /cars  ---&gt; create_car(pool, json) ---&gt; SQLx INSERT ---&gt; SQLite file
+  |
+  +--&gt; GET  /cars  ---&gt; get_cars(pool)          ---&gt; SQLx SELECT ---&gt; SQLite file
+</code></pre>
+      <ul>
+        <li><span class="tag">main()</span> קורא ל־<span class="tag">init_db()</span> פעם אחת בהתחלה.</li>
+        <li>לאחר מכן, עבור כל בקשה: Actix מנתב ל־<span class="tag">create_car</span> או <span class="tag">get_cars</span>.</li>
+        <li>כל handler מריץ query ב־SQLx מול SQLite.</li>
+      </ul>
+    </section>
+
+    <section id="errors" class="card">
+      <h2>12) שגיאות, קודים, ושיפורים מומלצים</h2>
+      <ul>
+        <li><b>ולידציה:</b> להחזיר 400 אם color/model ריקים.</li>
+        <li><b>Responses אחידים:</b> להחזיר JSON שגיאה במקום text.</li>
+        <li><b>ENV:</b> להוציא DB_URL ופורט ל־env vars.</li>
+        <li><b>query_as:</b> לקבל type-safety חזק יותר על תוצאות SQL.</li>
+        <li><b>Pagination:</b> אם יש הרבה רכבים.</li>
+      </ul>
+      <div class="bad">
+        כרגע אין endpoints ל־UPDATE/DELETE, ואין Authentication – זה API בסיסי (מעולה ללמידה).
+      </div>
+    </section>
+
+    <section id="fullcode" class="card">
+      <h2>נספח: כל הקוד (main.rs)</h2>
+      <pre class="code" data-lang="rust"><code>use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder, Result};
+use serde::{Deserialize, Serialize};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
+use sqlx::{Row, SqlitePool};
+use std::str::FromStr;
+
+#[derive(Serialize)]
+struct Car {
+    id: i64,
+    color: String,
+    model: String,
+}
+
+#[derive(Deserialize)]
+struct CreateCarRequest {
+    color: String,
+    model: String,
+}
+
+async fn init_db() -&gt; Result&lt;SqlitePool, sqlx::Error&gt; {
+    // create_if_missing ensures the file is created instead of failing to open
+    let database_url = &quot;sqlite://./src/car.db&quot;;
+    let connect_opts = SqliteConnectOptions::from_str(database_url)?.create_if_missing(true);
+    let pool = SqlitePoolOptions::new()
+        .max_connections(5)
+        .connect_with(connect_opts)
+        .await?;
+
+    sqlx::query(
+        r#&quot;
+        CREATE TABLE IF NOT EXISTS car (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            color TEXT NOT NULL,
+            model TEXT NOT NULL
+        )
+        &quot;#,
+    )
+    .execute(&amp;pool)
+    .await?; 
+
+    Ok(pool)
+}
+#[post(&quot;/cars&quot;)]
+async fn create_car(pool: web::Data&lt;SqlitePool&gt;, car: web::Json&lt;CreateCarRequest&gt;) -&gt; impl Responder {
+    match sqlx::query(&quot;INSERT INTO car (color, model) VALUES (?, ?)&quot;)
+        .bind(&amp;car.color)
+        .bind(&amp;car.model)
+        .execute(&amp;**pool)
+        .await
+    { 
+        Ok(result) =&gt; {
+            let new_car = Car {
+                id: result.last_insert_rowid(),
+                color: car.color.clone(),
+                model: car.model.clone(),
+            };
+            HttpResponse::Created().json(new_car)
+        }
+        Err(e) =&gt; HttpResponse::InternalServerError().body(format!(&quot;Database error: {}&quot;, e)),
+    }
+}
+#[get(&quot;/cars&quot;)]
+async fn get_cars(pool: web::Data&lt;SqlitePool&gt;) -&gt; impl Responder {
+    match sqlx::query(&quot;SELECT id, color, model FROM car ORDER BY id&quot;)
+        .fetch_all(&amp;**pool)
+        .await
+    {
+        Ok(rows) =&gt; {
+            let cars: Vec&lt;Car&gt; = rows
+                .iter()
+                .map(|row| Car {
+                    id: row.get(&quot;id&quot;),
+                    color: row.get(&quot;color&quot;),
+                    model: row.get(&quot;model&quot;),
+                })
+                .collect();
+            HttpResponse::Ok().json(cars)
+        }
+        Err(e) =&gt; HttpResponse::InternalServerError().body(format!(&quot;Database error: {}&quot;, e)),
+    }
+}
+
+#[actix_web::main]
+async fn main() -&gt; std::io::Result&lt;()&gt; {
+    let pool = init_db().await.expect(&quot;Failed to initialize database&quot;);
+    println!(&quot;🚀 Server running at http://127.0.0.1:4001&quot;);
+    println!(&quot;📊 SQLite database initialized at src/car.db&quot;);
+
+    HttpServer::new(move || {
+        App::new()
+            .app_data(web::Data::new(pool.clone()))
+            .service(create_car)
+            .service(get_cars)
+    })
+    .bind((&quot;127.0.0.1&quot;, 4001))?
+    .run()
+    .await
+}</code></pre>
+    </section>
+
+    <div class="footer">
+      אם תרצה, תגיד לי ואוסיף גם פרק “איך לחבר פרונט React” (fetch/axios + טופס יצירה + טבלת תוצאות).
+    </div>
+
+  </main>
+</div>
+</body>
+</html>
