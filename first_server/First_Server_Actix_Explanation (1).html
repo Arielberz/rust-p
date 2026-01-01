@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>First Server (Actix-web) — הסבר מלא איך השרת רץ</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --card:#121a33;
+      --text:#eef2ff;
+      --muted:#b7c0ff;
+      --accent:#7aa2ff;
+      --accent2:#7dffb2;
+      --border:rgba(255,255,255,.12);
+      --code:#0a0f1f;
+    }
+    body{
+      margin:0; font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 80% -10%, rgba(122,162,255,.25), transparent),
+                  radial-gradient(900px 500px at 0% 10%, rgba(125,255,178,.16), transparent),
+                  var(--bg);
+      color:var(--text); line-height:1.7;
+    }
+    .wrap{max-width:980px; margin:0 auto; padding:28px 16px 64px;}
+    h1{font-size:34px; margin:8px 0 10px;}
+    h2{font-size:24px; margin:28px 0 10px;}
+    h3{font-size:18px; margin:18px 0 8px; color:var(--accent2);}
+    p,li{color:var(--text);}
+    .muted{color:var(--muted);}
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:16px 16px;
+      margin:14px 0;
+      box-shadow: 0 10px 30px rgba(0,0,0,.24);
+    }
+    code, pre{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 13px;
+    }
+    pre{
+      background: var(--code);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:14px;
+      overflow:auto;
+      direction:ltr;
+      text-align:left;
+    }
+    .k{color:var(--accent);}
+    .pill{
+      display:inline-block;
+      padding:4px 10px;
+      border:1px solid var(--border);
+      border-radius:999px;
+      color:var(--muted);
+      font-size:12px;
+      margin-inline-start:6px;
+    }
+    .grid{display:grid; grid-template-columns:1fr; gap:12px;}
+    @media(min-width:900px){ .grid{grid-template-columns:1fr 1fr;} }
+    .step{border-right:4px solid rgba(122,162,255,.55); padding-right:12px;}
+    a{color:var(--accent); text-decoration:none}
+    a:hover{text-decoration:underline}
+    .flow{
+      background: rgba(0,0,0,.18);
+      border:1px dashed rgba(255,255,255,.18);
+      border-radius:14px;
+      padding:14px;
+    }
+    .flow b{color:var(--accent2)}
+    .warn{border-right-color: rgba(255,170,90,.7);}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>First Server (Actix-web) — הסבר מלא איך השרת רץ</h1>
+      <div class="muted">
+        מסמך זה מסביר <b>ברמה מדויקת וברורה</b> איך הקוד שלך מפעיל שרת, איך Actix-web עובד מאחורי הקלעים,
+        ואיך בקשה (Request) עוברת דרך <span class="pill">main.rs</span>
+        <span class="pill">routes.rs</span>
+        <span class="pill">handlers.rs</span>
+        עד שמתקבלת תשובה (Response).
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>1) מבנה הפרויקט</h2>
+      <pre>first_server/
+├─ Cargo.toml
+└─ src/
+   ├─ main.rs
+   ├─ routes.rs
+   └─ handlers.rs</pre>
+
+      <ul>
+        <li><b>Cargo.toml</b> — אומר ל־Rust אילו ספריות (crates) צריך, ואיך לבנות את הפרויקט.</li>
+        <li><b>main.rs</b> — נקודת הכניסה (entry point). כאן השרת “מופעל” ומתחיל להאזין לפורט.</li>
+        <li><b>routes.rs</b> — רישום הכתובות (Routes): איזה URL מפעיל איזה handler.</li>
+        <li><b>handlers.rs</b> — הלוגיקה של כל endpoint: מה מחזירים כשקוראים ל־URL מסוים.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>2) Cargo.toml — למה זה חשוב ולמה זה השלב הראשון</h2>
+      <p>
+        Rust לא “מביא” ספריות אוטומטית. אם אתה כותב <code>use actix_web::...</code> אבל אין תלות (dependency)
+        מתאימה — תקבל שגיאות כמו <code>unresolved crate actix_web</code>.
+      </p>
+
+      <h3>הקובץ (דוגמה מינימלית)</h3>
+      <pre>[package]
+name = "first_server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+actix-web = "4"</pre>
+
+      <h3>מה קורה כשמריצים cargo run?</h3>
+      <ol>
+        <li><b>cargo</b> קורא את <code>Cargo.toml</code>.</li>
+        <li>מוריד את התלויות (בפעם הראשונה) ל־<code>~/.cargo/</code>.</li>
+        <li>מקמפל את הפרויקט ואת התלויות.</li>
+        <li>מריץ את קובץ ההפעלה שנוצר (binary) — וזה מפעיל את <code>main()</code>.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>3) main.rs — מה בדיוק מפעיל את השרת</h2>
+
+      <h3>הקוד שלך (גרסה מסודרת)</h3>
+      <pre>mod routes;
+mod handlers;
+
+use actix_web::{App, HttpServer};
+
+#[actix_web::main]
+async fn main() -&gt; std::io::Result&lt;()&gt; {
+    HttpServer::new(|| {
+        App::new()
+            .configure(routes::init)
+    })
+    .bind(("127.0.0.1", 3000))?
+    .run()
+    .await
+}</pre>
+
+      <div class="grid">
+        <div class="card step">
+          <h3>3.1 <code>mod routes;</code> ו־<code>mod handlers;</code></h3>
+          <p>
+            אלו הצהרות למערכת המודולים של Rust:
+            אתה אומר לקומפיילר: “יש לי מודול בשם <b>routes</b> בקובץ <code>src/routes.rs</code>
+            ומודול בשם <b>handlers</b> בקובץ <code>src/handlers.rs</code>”.
+          </p>
+          <p class="muted">
+            לכן אם הקבצים לא קיימים — תקבל את השגיאה שראית:
+            <code>file not found for module routes</code>.
+          </p>
+        </div>
+
+        <div class="card step">
+          <h3>3.2 <code>use actix_web::{App, HttpServer};</code></h3>
+          <p>
+            כאן אתה “מייבא” שני רכיבים מרכזיים:
+          </p>
+          <ul>
+            <li><b>HttpServer</b> — אחראי להאזין לפורט ולהפעיל worker threads.</li>
+            <li><b>App</b> — מייצג את “האפליקציה” שלך: routes, middlewares, state וכו'.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card step">
+        <h3>3.3 מה עושה <code>#[actix_web::main]</code>?</h3>
+        <p>
+          זו מאקרו (macro) שמגדירה runtime אסינכרוני (async runtime).
+          ב־Actix-web הריצה האסינכרונית מתבססת על Tokio (מתחת למכסה המנוע).
+        </p>
+        <p class="muted">
+          בלי runtime כזה, Rust לא יכול להריץ <code>async fn main</code> כי צריך “מנוע”
+          שמריץ Futures ומנהל IO אסינכרוני.
+        </p>
+      </div>
+
+      <div class="card step">
+        <h3>3.4 <code>HttpServer::new(|| ...)</code> — המפעל שמייצר App לכל worker</h3>
+        <p>
+          <code>HttpServer::new</code> מקבל closure (פונקציה ללא שם) שמייצרת <b>App חדש</b>.
+          Actix יכול להפעיל כמה workers (threads) כדי לטפל בכמה בקשות במקביל.
+        </p>
+        <p>
+          לכן ה־closure נקרא (בדרך כלל) פעם לכל worker, וכל worker מקבל <code>App::new()</code> משלו.
+        </p>
+      </div>
+
+      <div class="card step">
+        <h3>3.5 <code>App::new().configure(routes::init)</code></h3>
+        <p>
+          כאן אתה בונה את האפליקציה ומכניס אליה את כל ה־routes.
+        </p>
+        <ul>
+          <li><code>App::new()</code> — יוצר App ריק.</li>
+          <li><code>.configure(routes::init)</code> — מעביר לפונקציה שלך <code>routes::init</code>
+              אובייקט config כדי שתוסיף עליו services/routes.</li>
+        </ul>
+        <p class="muted">
+          זאת דרך נקייה להוציא את ה־routes החוצה מ־main.rs.
+        </p>
+      </div>
+
+      <div class="card step">
+        <h3>3.6 <code>.bind(("127.0.0.1", 3000))?</code></h3>
+        <p>
+          “לחתוך” כתובת + פורט ולהתחיל להאזין.
+        </p>
+        <ul>
+          <li><b>127.0.0.1</b> = המחשב שלך בלבד (localhost).</li>
+          <li><b>3000</b> = הפורט.</li>
+          <li>ה־<code>?</code> אומר: אם יש שגיאה (למשל הפורט תפוס), תחזיר אותה מ־main.</li>
+        </ul>
+      </div>
+
+      <div class="card step">
+        <h3>3.7 <code>.run().await</code> — כאן השרת באמת “רץ”</h3>
+        <p>
+          <code>run()</code> מחזיר Future שמייצג את “לופ השרת”.
+          <code>await</code> מחכה לו — כלומר, התוכנית נשארת רצה ומטפלת בבקשות
+          עד שתעצור אותה (Ctrl+C).
+        </p>
+      </div>
+
+    </div>
+
+    <div class="card">
+      <h2>4) routes.rs — איפה אתה “מחבר” URL ל־handler</h2>
+
+      <h3>קוד לדוגמה</h3>
+      <pre>use actix_web::web;
+use crate::handlers;
+
+pub fn init(cfg: &mut web::ServiceConfig) {
+    cfg
+        .service(handlers::hello)
+        .service(handlers::get_all_persons);
+}</pre>
+
+      <ul>
+        <li><code>ServiceConfig</code> זה “לוח חיבורים” של routes.</li>
+        <li><code>cfg.service(...)</code> מוסיף service חדש לאפליקציה.</li>
+        <li>כל service כאן הוא פונקציה מתוך <code>handlers</code> שיש עליה מאקרו כמו <code>#[get("...")]</code>.</li>
+      </ul>
+
+      <div class="flow">
+        <b>חשוב:</b> אם לא הוספת handler כאן (או לא הוספת אותו ב־App בדרך אחרת),
+        השרת ירוץ — אבל ה־URL יחזיר <b>404 Not Found</b>.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>5) handlers.rs — מה קורה כשבקשה מגיעה בפועל</h2>
+
+      <h3>קוד לדוגמה</h3>
+      <pre>use actix_web::{get, Responder};
+
+#[get("/")]
+pub async fn hello() -&gt; impl Responder {
+    "Hello, world!"
+}
+
+#[get("/api/persons")]
+pub async fn get_all_persons() -&gt; impl Responder {
+    "persons ....."
+}</pre>
+
+      <h3>5.1 מה עושה <code>#[get(\"/\")]</code>?</h3>
+      <p>
+        זו מאקרו שמגדירה ל־Actix:
+        “הפונקציה הזאת היא handler לבקשות HTTP מסוג GET בנתיב הזה”.
+      </p>
+
+      <h3>5.2 למה <code>async fn</code>?</h3>
+      <p>
+        Actix-web עובד אסינכרונית. גם אם כרגע אתה מחזיר מחרוזת, בעתיד תעשה:
+      </p>
+      <ul>
+        <li>קריאה ל־DB</li>
+        <li>קריאה ל־API חיצוני</li>
+        <li>קריאה לקובץ</li>
+      </ul>
+      <p>
+        כל אלו יכולים להיות IO איטי, ו־async מאפשר לשרת לטפל בבקשות אחרות בזמן ההמתנה.
+      </p>
+
+      <h3>5.3 מה זה <code>impl Responder</code>?</h3>
+      <p>
+        <code>Responder</code> זו “יכולת” (trait) של Actix להפוך ערך כלשהו ל־HTTP response.
+        מחרוזת (string literal) כמו <code>"Hello"</code> כבר “יודעת” להפוך את עצמה ל־response.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>6) זרימת בקשה (Request Flow) — מי קורא למי ולמה</h2>
+
+      <div class="flow">
+        <p><b>1)</b> אתה שולח בקשה: <code>GET /api/persons</code></p>
+        <p><b>2)</b> ה־OS מעביר אותה לפורט 3000 על המחשב שלך</p>
+        <p><b>3)</b> <code>HttpServer</code> (Actix) מקבל את הבקשה מה-socket</p>
+        <p><b>4)</b> Actix מחפש route מתאים בתוך ה־<code>App</code></p>
+        <p><b>5)</b> ה־App יודע על routes כי ב־<code>main.rs</code> עשית <code>.configure(routes::init)</code></p>
+        <p><b>6)</b> ב־<code>routes::init</code> רשמת <code>cfg.service(handlers::get_all_persons)</code></p>
+        <p><b>7)</b> המאקרו <code>#[get("/api/persons")]</code> משייך את הפונקציה לנתיב</p>
+        <p><b>8)</b> Actix מפעיל את <code>get_all_persons()</code></p>
+        <p><b>9)</b> הפונקציה מחזירה ערך שממומש כ־<code>Responder</code></p>
+        <p><b>10)</b> Actix בונה HTTP response ושולח אותו חזרה ללקוח (דפדפן/Postman)</p>
+      </div>
+
+      <p class="muted">
+        בקיצור: <b>main</b> מרים שרת → <b>routes</b> מחבר כתובות → <b>handlers</b> מחזירים תשובה.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>7) איך לבדוק שהכל עובד</h2>
+
+      <div class="grid">
+        <div class="card step">
+          <h3>דפדפן</h3>
+          <ul>
+            <li><code>http://127.0.0.1:3000/</code></li>
+            <li><code>http://127.0.0.1:3000/api/persons</code></li>
+          </ul>
+        </div>
+
+        <div class="card step">
+          <h3>Postman</h3>
+          <ol>
+            <li>New → HTTP Request</li>
+            <li>Method: GET</li>
+            <li>URL: <code>http://127.0.0.1:3000/api/persons</code></li>
+            <li>Send</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="card warn step">
+        <h3>בעיות נפוצות</h3>
+        <ul>
+          <li><b>הפורט תפוס</b> → לשנות 3000 או לסגור תוכנה אחרת שתופסת אותו.</li>
+          <li><b>השרת לא רץ</b> → צריך להשאיר את <code>cargo run</code> פתוח.</li>
+          <li><b>404</b> → בד״כ route לא נרשם ב־<code>routes::init</code>.</li>
+        </ul>
+      </div>
+    </div>
+
+    </div>
+
+    <div class="muted" style="text-align:center; padding-top:10px;">
+      נבנה עבורך כמסמך לימודי ברור — First Server עם Actix-web (Rust)
+    </div>
+
+  </div>
+</body>
+</html>

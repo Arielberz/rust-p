@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>D1 Server – הסבר מלא על הקוד (Actix-web)</title>
+<style>
+body{font-family:Arial,system-ui; background:#0b1020; color:#eef2ff; line-height:1.7; margin:0; padding:24px}
+h1,h2,h3{color:#7aa2ff}
+code,pre{background:#0a0f1f; color:#eaeaff; padding:10px; border-radius:10px; display:block; overflow:auto}
+.section{background:#121a33; padding:18px; border-radius:16px; margin-bottom:20px}
+.note{color:#b7c0ff}
+.flow{background:#0f1730; border:1px dashed #7aa2ff; padding:12px; border-radius:12px}
+</style>
+</head>
+<body>
+
+<h1>📘 D1 Server – הסבר מלא ומדויק על הקוד</h1>
+<p class="note">
+מסמך זה מסביר <b>שורה־שורה</b> איך השרת שלך עובד ב־Rust עם Actix-web,  
+איך הקוד גורם לשרת לרוץ, ואיך בקשה מגיעה ל־handler ומחזירה תשובה.
+</p>
+
+<div class="section">
+<h2>1️⃣ מבנה הפרויקט</h2>
+<pre>
+d1_server/
+├─ Cargo.toml
+└─ src/
+   └─ main.rs
+</pre>
+<ul>
+<li><b>Cargo.toml</b> – הגדרות הפרויקט והתלויות</li>
+<li><b>main.rs</b> – כל לוגיקת השרת נמצאת כאן</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>2️⃣ Cargo.toml – למה הוא קריטי</h2>
+<pre>
+[package]
+name = "d1_server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+actix-web="4"
+serde = {version="1.0" , features =["derive"]}
+serde_json = "1.0"
+uuid = {version ="1" , feature =["v4"]}
+</pre>
+
+<h3>מה זה אומר בפועל?</h3>
+<ul>
+<li><b>actix-web</b> – ספריית שרת HTTP</li>
+<li><b>serde / serde_json</b> – המרה בין Rust ↔ JSON</li>
+<li><b>uuid</b> – יצירת מזהים ייחודיים (ID)</li>
+</ul>
+
+<p class="note">
+⚠️ שים לב: ב־uuid צריך להיות <code>features</code> (ברבים).  
+אבל זה לא משפיע על הקוד הנוכחי כי uuid עדיין לא בשימוש.
+</p>
+</div>
+
+<div class="section">
+<h2>3️⃣ ייבוא ספריות (use)</h2>
+<pre>
+use actix_web::{get, App, HttpServer, Responder};
+</pre>
+
+<ul>
+<li><b>get</b> – מאקרו שמגדיר Route מסוג GET</li>
+<li><b>App</b> – מייצג את אפליקציית השרת</li>
+<li><b>HttpServer</b> – השרת עצמו שמאזין לפורט</li>
+<li><b>Responder</b> – trait שמאפשר להחזיר HTTP Response</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>4️⃣ ה־Handler הראשון – <code>GET /</code></h2>
+<pre>
+#[get("/")]
+async fn hello() -> impl Responder {
+    "Hello, world!"
+}
+</pre>
+
+<h3>הסבר:</h3>
+<ul>
+<li><code>#[get("/")]</code> – מגדיר שהפונקציה מטפלת ב־GET לנתיב "/"</li>
+<li><code>async fn</code> – פונקציה אסינכרונית</li>
+<li><code>impl Responder</code> – כל ערך ש־Actix יודע להפוך ל־HTTP</li>
+<li>המחרוזת מוחזרת כתשובת HTTP עם סטטוס 200</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>5️⃣ Handler נוסף – <code>GET /api/persons</code></h2>
+<pre>
+#[get("/api/persons")]
+async fn get_all_persons() -> impl Responder {
+    "persons .....!"
+}
+</pre>
+
+<p>
+זהו endpoint נוסף שמדמה API.  
+כרגע הוא מחזיר מחרוזת, ובהמשך יחזיר JSON.
+</p>
+</div>
+
+<div class="section">
+<h2>6️⃣ הפונקציה <code>main</code> – כאן השרת באמת רץ</h2>
+<pre>
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| App::new()
+        .service(hello)
+        .service(get_all_persons))
+        .bind("127.0.0.1:3000")?
+        .run()
+        .await
+}
+</pre>
+
+<h3>פירוק לשורות:</h3>
+<ul>
+<li><code>#[actix_web::main]</code> – מפעיל runtime אסינכרוני (Tokio)</li>
+<li><code>HttpServer::new</code> – יוצר שרת</li>
+<li><code>App::new()</code> – יוצר אפליקציה ריקה</li>
+<li><code>.service(hello)</code> – רישום route</li>
+<li><code>.bind</code> – חיבור ל־IP ופורט</li>
+<li><code>.run().await</code> – לולאת השרת (לא נגמרת)</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>7️⃣ זרימת בקשה – מי קורא למי</h2>
+<div class="flow">
+1️⃣ בקשה נשלחת ל־http://127.0.0.1:3000/api/persons  
+<br>2️⃣ מערכת ההפעלה מעבירה אותה לפורט 3000  
+<br>3️⃣ HttpServer מקבל את הבקשה  
+<br>4️⃣ App מחפש service תואם  
+<br>5️⃣ Actix מפעיל את <code>get_all_persons</code>  
+<br>6️⃣ הפונקציה מחזירה Responder  
+<br>7️⃣ Actix שולח HTTP Response חזרה ללקוח
+</div>
+</div>
+
+<div class="section">
+<h2>8️⃣ סיכום קצר</h2>
+<ul>
+<li>זהו שרת Actix תקין לחלוטין</li>
+<li>הכל נמצא בקובץ אחד – מתאים ללמידה</li>
+<li>קל לפצל בהמשך ל־routes / handlers / models</li>
+</ul>
+</div>
+
+<p class="note" style="text-align:center">
+✔️ נבנה כמסמך לימודי ברור ומדויק ל־Rust Backend
+</p>
+
+</body>
+</html>
