@@ -1,0 +1,11 @@
+[package]
+name = "person_citis"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+actix-web = "4.11.0"
+serde = "1.0.228"
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite"] }
+tokio = "1.47.1"
+uuid = "1.18.1"
